@@ -5,12 +5,15 @@ RUN apk add --no-cache \
     chromium \
     nss \
     freetype \
+    freetype-dev \
     harfbuzz \
     ca-certificates \
     ttf-freefont \
-    dcron
+    dcron \
+    nodejs \
+    npm
 
-# Establecer variable de entorno para Playwright
+# Establecer variables de entorno para Playwright
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
     PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
@@ -33,9 +36,9 @@ COPY movies.json ./
 # Compilar TypeScript
 RUN tsc
 
-# Copiar script de entrada
+# Copiar script de entrada y convertir finales de línea de Windows a Unix
 COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+RUN sed -i 's/\r$//' /entrypoint.sh && chmod +x /entrypoint.sh
 
 # Crear archivo de log
 RUN touch /var/log/cron.log
