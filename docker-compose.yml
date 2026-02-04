@@ -1,0 +1,12 @@
+services:
+  torrent-scraper:
+    build: .
+    container_name: torrent-scraper
+    restart: unless-stopped
+    volumes:
+      # Montar movies.json para poder editarlo sin reconstruir la imagen
+      - ./movies.json:/app/movies.json
+      # Montar directorio para ver los resultados
+      - ./results:/app/results
+    environment:
+      - TZ=Europe/Madrid
