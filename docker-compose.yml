@@ -3,6 +3,8 @@ services:
     build: .
     container_name: torrent-scraper
     restart: unless-stopped
+    env_file:
+      - .env
     volumes:
       # Montar movies.json para poder editarlo sin reconstruir la imagen
       - ./movies.json:/app/movies.json

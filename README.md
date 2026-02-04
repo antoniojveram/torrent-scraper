@@ -6,6 +6,7 @@ Aplicación para scrapear torrents de https://descargamix.net/ultimos y notifica
 
 - Scraping automático de la página de últimos torrents
 - Detección de películas de tu lista de seguimiento
+- **📱 Notificaciones por Telegram** cuando se ejecuta el scraper
 - Ejecución automática diaria a las 8:00 AM mediante cron
 - Contenedor Docker listo para producción
 - Resultados guardados en JSON
@@ -14,6 +15,7 @@ Aplicación para scrapear torrents de https://descargamix.net/ultimos y notifica
 
 - Node.js 20+ (para desarrollo local)
 - Docker y Docker Compose (para despliegue)
+- **(Opcional)** Bot de Telegram para notificaciones
 
 ## 🛠️ Configuración
 
@@ -30,6 +32,42 @@ Edita el archivo `movies.json` con las películas que quieres monitorizar:
   ]
 }
 ```
+
+### 2. Configurar notificaciones de Telegram (Opcional)
+
+Para recibir notificaciones en tu móvil cada vez que se ejecuta el scraper:
+
+#### Paso 1: Crear un bot de Telegram
+
+1. Abre Telegram y busca **@BotFather**
+2. Envía el comando `/newbot`
+3. Sigue las instrucciones y elige un nombre para tu bot
+4. **Guarda el token** que te proporciona (ejemplo: `1234567890:ABCdefGHIjklMNOpqrsTUVwxyz`)
+
+#### Paso 2: Obtener tu Chat ID
+
+1. Busca **@userinfobot** en Telegram
+2. Inicia una conversación y te dará tu **Chat ID** (ejemplo: `123456789`)
+
+#### Paso 3: Configurar las variables de entorno
+
+Edita el archivo `docker-compose.yml` y descomenta estas líneas con tus valores:
+
+```yaml
+environment:
+  - TZ=Europe/Madrid
+  - TELEGRAM_BOT_TOKEN=1234567890:ABCdefGHIjklMNOpqrsTUVwxyz
+  - TELEGRAM_CHAT_ID=123456789
+```
+
+**Para desarrollo local**, crea un archivo `.env` en la raíz:
+
+```bash
+TELEGRAM_BOT_TOKEN=1234567890:ABCdefGHIjklMNOpqrsTUVwxyz
+TELEGRAM_CHAT_ID=123456789
+```
+
+Y ejecuta con: `export $(cat .env | xargs) && npm start` (Linux/Mac) o configura las variables en Windows.
 
 ## 💻 Uso Local
 
@@ -68,6 +106,13 @@ docker-compose logs -f
 docker-compose down
 ```
 
+**⚠️ Importante:** Si actualizas las variables de Telegram después de crear el contenedor, debes reconstruirlo:
+
+```bash
+docker-compose down
+docker-compose up -d --build
+```
+
 ### Configuración del Cron
 
 El contenedor ejecuta el scraper:
@@ -88,13 +133,41 @@ Para cambiar el horario, edita el archivo `entrypoint.sh` y modifica la expresi�
 torrent-scraper/
 ├── src/
 │   ├── index.ts        # Script principal del scraper
+│   ├── telegram.ts     # Módulo de notificaciones de Telegram
 │   └── types.ts        # Definiciones de tipos TypeScript
 ├── movies.json         # Lista de películas a monitorizar
 ├── results.json        # Resultados del último scraping (generado)
 ├── Dockerfile          # Configuración del contenedor
 ├── docker-compose.yml  # Orquestación de Docker
 ├── entrypoint.sh       # Script de inicio con cron
+├── .env.example        # Ejemplo de variables de entorno
 └── tsconfig.json       # Configuración de TypeScript
+```
+
+## 📱 Notificaciones de Telegram
+
+Cuando las notificaciones están habilitadas, recibirás un mensaje cada vez que se ejecuta el scraper con:
+
+- 📅 Fecha y hora de la ejecución
+- 📦 Número total de torrents analizados
+- 🎉 Películas encontradas (si hay coincidencias)
+- 🔗 Enlaces directos a los torrents
+
+**Ejemplo de notificación:**
+
+```
+🎬 Torrent Scraper - Reporte
+
+📅 Fecha: 04/02/2026, 08:00:15
+📦 Total torrents analizados: 150
+
+🎉 ¡2 PELÍCULA(S) ENCONTRADA(S)!
+
+1. Kill Bill Vol. 1 BluRay 1080p
+   🔗 Ver enlace
+
+2. Dune Part Two 2024 4K
+   🔗 Ver enlace
 ```
 
 ## 📊 Resultados

@@ -1,7 +1,12 @@
+import { config } from "dotenv";
 import { chromium } from "playwright";
 import * as fs from "fs";
 import * as path from "path";
 import { MovieConfig, TorrentResult, ScraperResult } from "./types";
+import { TelegramNotifier } from "./telegram";
+
+// Cargar variables de entorno del archivo .env
+config();
 
 const CONFIG_PATH = path.join(__dirname, "..", "movies.json");
 const TARGET_URL = "https://descargamix.net/ultimos";
@@ -113,8 +118,13 @@ async function scrapeTorrents(): Promise<ScraperResult> {
 
 // Ejecutar el scraper
 scrapeTorrents()
-  .then(() => {
+  .then(async (result) => {
     console.log("✅ Scraping completado exitosamente");
+
+    // Enviar notificación de Telegram
+    const notifier = new TelegramNotifier();
+    await notifier.sendNotification(result);
+
     process.exit(0);
   })
   .catch((error) => {
