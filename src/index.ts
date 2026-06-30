@@ -87,6 +87,7 @@ async function scrapeTorrents(): Promise<ScraperResult> {
       foundMovies,
       totalTorrents: torrents.length,
       timestamp: new Date().toISOString(),
+      watchlist,
     };
 
     // Mostrar resultados

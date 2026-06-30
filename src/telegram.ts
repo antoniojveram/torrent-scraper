@@ -54,7 +54,15 @@ export class TelegramNotifier {
       });
     } else {
       message += `😔 No se encontraron películas de tu watchlist\n\n`;
-      message += `💡 Las películas buscadas se encuentran en el archivo movies.json`;
+
+      if (result.watchlist && result.watchlist.length > 0) {
+        message += `📋 *Películas en búsqueda:*\n`;
+        result.watchlist.forEach((movie, index) => {
+          message += `${index + 1}. ${this.escapeMarkdown(movie)}\n`;
+        });
+      } else {
+        message += `💡 Las películas buscadas se encuentran en el archivo movies.json`;
+      }
     }
 
     return message;

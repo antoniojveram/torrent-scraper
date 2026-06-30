@@ -12,4 +12,5 @@ export interface ScraperResult {
   foundMovies: TorrentResult[];
   totalTorrents: number;
   timestamp: string;
+  watchlist?: string[];
 }
