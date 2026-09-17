@@ -1,12 +1,12 @@
 # Torrent Scraper
 
-Aplicación para scrapear torrents de https://descargamix.net/ultimos y notificar cuando aparecen películas de tu watchlist.
+Aplicación para scrapear torrents de https://descargamix.net/ultimos y https://dontorrent.supply/ultimos, y notificar cuando aparecen películas de tu watchlist.
 
 ## 🚀 Características
 
-- Scraping automático de la página de últimos torrents
+- Scraping automático de las páginas de últimos estrenos (Descargamix y DonTorrent)
 - Detección de películas de tu lista de seguimiento
-- **📱 Notificaciones por Telegram** cuando se ejecuta el scraper
+- **📱 Notificaciones por Telegram** agrupadas por fuente
 - Ejecución automática diaria a las 8:00 AM mediante cron
 - Contenedor Docker listo para producción
 - Resultados guardados en JSON
@@ -132,11 +132,14 @@ Para cambiar el horario, edita el archivo `entrypoint.sh` y modifica la expresi�
 ```
 torrent-scraper/
 ├── src/
-│   ├── index.ts        # Script principal del scraper
+│   ├── index.ts        # Script principal (orquesta los scrapers)
+│   ├── scrapers/
+│   │   ├── descargamix.ts  # Scraper de descargamix.net
+│   │   └── dontorrent.ts   # Scraper de dontorrent.supply (salta Anubis)
 │   ├── telegram.ts     # Módulo de notificaciones de Telegram
 │   └── types.ts        # Definiciones de tipos TypeScript
 ├── movies.json         # Lista de películas a monitorizar
-├── results.json        # Resultados del último scraping (generado)
+├── results/            # Resultados del último scraping (generado, volumen Docker)
 ├── Dockerfile          # Configuración del contenedor
 ├── docker-compose.yml  # Orquestación de Docker
 ├── entrypoint.sh       # Script de inicio con cron
@@ -149,8 +152,8 @@ torrent-scraper/
 Cuando las notificaciones están habilitadas, recibirás un mensaje cada vez que se ejecuta el scraper con:
 
 - 📅 Fecha y hora de la ejecución
-- 📦 Número total de torrents analizados
-- 🎉 Películas encontradas (si hay coincidencias)
+- 📦 Número total de torrents analizados y estado de cada fuente
+- 🎉 Películas encontradas agrupadas por fuente (si hay coincidencias)
 - 🔗 Enlaces directos a los torrents
 
 **Ejemplo de notificación:**
@@ -158,32 +161,46 @@ Cuando las notificaciones están habilitadas, recibirás un mensaje cada vez que
 ```
 🎬 Torrent Scraper - Reporte
 
-📅 Fecha: 04/02/2026, 08:00:15
-📦 Total torrents analizados: 150
+📅 Fecha: 17/09/2026, 08:00:15
+📦 Total torrents analizados: 129
 
-🎉 ¡2 PELÍCULA(S) ENCONTRADA(S)!
+🌐 Fuentes:
+   • Descargamix: 73 torrents
+   • DonTorrent: 56 torrents
 
-1. Kill Bill Vol. 1 BluRay 1080p
-   🔗 Ver enlace
+🎉 ¡1 PELÍCULA(S) ENCONTRADA(S)!
 
-2. Dune Part Two 2024 4K
+📡 DonTorrent
+1. Vaiana — (BluRay-1080p) · 2026-09-15
    🔗 Ver enlace
 ```
 
 ## 📊 Resultados
 
-Los resultados se guardan en `results.json` con el siguiente formato:
+Los resultados se guardan en `results/results.json` (dentro del volumen montado en Docker) con el siguiente formato:
 
 ```json
 {
   "foundMovies": [
     {
       "title": "Título de la película encontrada",
-      "url": "https://..."
+      "url": "https://...",
+      "date": "2026-09-15",
+      "quality": "(BluRay-1080p)",
+      "type": "movie",
+      "source": "DonTorrent"
     }
   ],
-  "totalTorrents": 150,
-  "timestamp": "2026-02-04T12:00:00.000Z"
+  "sources": [
+    {
+      "source": "Descargamix",
+      "url": "https://descargamix.net/ultimos",
+      "totalTorrents": 73,
+      "foundMovies": []
+    }
+  ],
+  "totalTorrents": 129,
+  "timestamp": "2026-09-17T12:00:00.000Z"
 }
 ```
 
@@ -207,7 +224,8 @@ docker exec torrent-scraper cat /var/log/cron.log
 
 - El scraper utiliza Playwright en modo headless
 - No requiere credenciales ni autenticación
-- Solo realiza lecturas, no modifica la página web objetivo
+- Solo realiza lecturas, no modifica las páginas web objetivo
+- DonTorrent usa **Anubis**, una protección proof-of-work contra bots: el scraper usa un User-Agent de navegador real y espera a que el reto JavaScript se resuelva automáticamente
 
 ## 🔧 Solución de Problemas
 
@@ -220,6 +238,14 @@ docker exec torrent-scraper cat /var/log/cron.log
 ### Error de Playwright en Docker
 
 Si hay problemas con Chromium, verifica que todas las dependencias estén instaladas en el Dockerfile.
+
+### DonTorrent bloquea el acceso (Anubis)
+
+Si en los logs aparece `Anubis ha bloqueado la petición`, actualiza el `USER_AGENT` en `src/scrapers/dontorrent.ts` con un User-Agent de navegador reciente y vuelve a compilar/reconstruir.
+
+### DonTorrent no resuelve el dominio en Docker
+
+El contenedor usa DNS públicos (`1.1.1.1`, `8.8.8.8`) configurados en `docker-compose.yml` para evitar bloqueos DNS locales de dominios de torrents. Si tu red los bloquea, cámbialos por otros resolvers.
 
 ## 📄 Licencia
 

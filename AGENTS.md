@@ -1,7 +1,7 @@
 # AGENTS.md - Torrent Scraper
 
 ## Project Overview
-TypeScript scraper for `https://descargamix.net/ultimos` that checks for movies in a watchlist and optionally sends Telegram notifications. Runs daily at 8:00 AM via cron in Docker.
+TypeScript scraper for `https://descargamix.net/ultimos` and `https://dontorrent.supply/ultimos` that checks for movies in a watchlist and optionally sends Telegram notifications. Runs daily at 8:00 AM via cron in Docker.
 
 ## Key Commands
 
@@ -19,15 +19,21 @@ TypeScript scraper for `https://descargamix.net/ultimos` that checks for movies 
 
 **Entry point**: `src/index.ts` → compiles to `dist/index.js`
 - Loads `movies.json` watchlist
-- Uses Playwright (Chromium) to scrape target URL
+- Launches a single Playwright (Chromium) browser shared by all scrapers
+- Runs every scraper in parallel with retries (failures are isolated per source)
 - Filters torrents by partial title match (case-insensitive)
-- Saves results to `results.json`
+- Saves results to `results/results.json` (mounted volume in Docker)
 - Sends Telegram notification if configured
 
 **Modules**:
-- `src/index.ts` - Main scraper logic
-- `src/telegram.ts` - Telegram bot notifications
-- `src/types.ts` - TypeScript interfaces
+- `src/index.ts` - Orchestrates scrapers, filters watchlist, writes results
+- `src/scrapers/descargamix.ts` - Captures all links from descargamix
+- `src/scrapers/dontorrent.ts` - Scrapes `#ultimos_torrents` (movies + series) and bypasses Anubis
+- `src/telegram.ts` - Telegram bot notifications (grouped by source)
+- `src/types.ts` - TypeScript interfaces (`SiteScraper`, `TorrentItem`, `SourceResult`, ...)
+
+## Adding a New Source
+Create `src/scrapers/<site>.ts` exporting a `scraper: SiteScraper` with `name`, `url` and `scrape(browser)`, then register it in the `SCRAPERS` array in `src/index.ts`.
 
 ## Environment Variables
 

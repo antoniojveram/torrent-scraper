@@ -44,14 +44,37 @@ export class TelegramNotifier {
     let message = `🎬 *Torrent Scraper - Reporte*\n\n`;
     message += `📅 *Fecha:* ${date}\n`;
     message += `📦 *Total torrents analizados:* ${result.totalTorrents}\n\n`;
+    message += `🌐 *Fuentes:*\n`;
+    result.sources.forEach((source) => {
+      const status = source.error
+        ? `⚠️ error: ${this.escapeMarkdown(source.error)}`
+        : `${source.totalTorrents} torrents`;
+      message += `   • ${this.escapeMarkdown(source.source)}: ${status}\n`;
+    });
+    message += `\n`;
 
     if (result.foundMovies.length > 0) {
-      message += `🎉 *¡${result.foundMovies.length} PELÍCULA(S) ENCONTRADA(S)!*\n\n`;
+      message += `🎉 *¡${result.foundMovies.length} PELÍCULA(S) ENCONTRADA(S)!*\n`;
 
-      result.foundMovies.forEach((movie, index) => {
-        message += `${index + 1}. *${this.escapeMarkdown(movie.title)}*\n`;
-        message += `   🔗 [Ver enlace](${movie.url})\n\n`;
+      result.sources.forEach((source) => {
+        if (source.foundMovies.length === 0) return;
+
+        message += `\n📡 *${this.escapeMarkdown(source.source)}*\n`;
+        source.foundMovies.forEach((movie, index) => {
+          const details = [
+            movie.type === "series" ? "Serie" : undefined,
+            movie.quality,
+            movie.date,
+          ]
+            .filter(Boolean)
+            .join(" · ");
+
+          message += `${index + 1}. *${this.escapeMarkdown(movie.title)}*`;
+          message += details ? ` — ${this.escapeMarkdown(details)}\n` : `\n`;
+          message += `   🔗 [Ver enlace](${movie.url})\n`;
+        });
       });
+      message += `\n`;
     } else {
       message += `😔 No se encontraron películas de tu watchlist\n\n`;
 
