@@ -1,17 +1,29 @@
 import { config } from "dotenv";
-import { chromium } from "playwright";
+import { Browser, chromium } from "playwright";
 import * as fs from "fs";
 import * as path from "path";
-import { MovieConfig, TorrentResult, ScraperResult } from "./types";
+import {
+  MovieConfig,
+  ScraperResult,
+  SiteScraper,
+  SourceResult,
+} from "./types";
 import { TelegramNotifier } from "./telegram";
+import { scraper as descargamix } from "./scrapers/descargamix";
+import { scraper as dontorrent } from "./scrapers/dontorrent";
 
 // Cargar variables de entorno del archivo .env
 config();
 
 const CONFIG_PATH = path.join(__dirname, "..", "movies.json");
-const TARGET_URL = "https://descargamix.net/ultimos";
+const RESULTS_DIR = path.join(__dirname, "..", "results");
+const RESULTS_PATH = path.join(RESULTS_DIR, "results.json");
 
-async function loadWatchlist(): Promise<string[]> {
+const SCRAPERS: SiteScraper[] = [descargamix, dontorrent];
+const MAX_ATTEMPTS = 3;
+const RETRY_DELAYS_MS = [5000, 15000];
+
+function loadWatchlist(): string[] {
   try {
     const configData = fs.readFileSync(CONFIG_PATH, "utf-8");
     const config: MovieConfig = JSON.parse(configData);
@@ -29,6 +41,91 @@ function matchesWatchlist(title: string, watchlist: string[]): boolean {
   );
 }
 
+async function runScraper(
+  browser: Browser,
+  site: SiteScraper,
+  watchlist: string[],
+): Promise<SourceResult> {
+  let lastError = "";
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    console.log(
+      `\n🌐 [${site.name}] Analizando: ${site.url}${attempt > 1 ? ` (intento ${attempt}/${MAX_ATTEMPTS})` : ""}`,
+    );
+
+    try {
+      const items = await site.scrape(browser);
+      const foundMovies = items
+        .filter((item) => matchesWatchlist(item.title, watchlist))
+        .map((item) => ({ ...item, source: site.name }));
+
+      console.log(`📦 [${site.name}] Elementos encontrados: ${items.length}`);
+      console.log(
+        `🎯 [${site.name}] Coincidencias con la watchlist: ${foundMovies.length}`,
+      );
+
+      return {
+        source: site.name,
+        url: site.url,
+        totalTorrents: items.length,
+        foundMovies,
+      };
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : String(error);
+      console.error(
+        `❌ [${site.name}] Error (intento ${attempt}/${MAX_ATTEMPTS}): ${lastError}`,
+      );
+
+      if (attempt < MAX_ATTEMPTS) {
+        const delay = RETRY_DELAYS_MS[attempt - 1];
+        console.log(`⏳ [${site.name}] Reintentando en ${delay / 1000}s...`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
+  }
+
+  return {
+    source: site.name,
+    url: site.url,
+    totalTorrents: 0,
+    foundMovies: [],
+    error: lastError,
+  };
+}
+
+function printSummary(result: ScraperResult): void {
+  console.log("\n" + "=".repeat(60));
+  if (result.foundMovies.length > 0) {
+    console.log("🎉 ¡PELÍCULAS ENCONTRADAS!");
+    console.log("=".repeat(60));
+
+    result.sources.forEach((source) => {
+      if (source.foundMovies.length === 0) return;
+
+      console.log(`\n📡 ${source.source}:`);
+      source.foundMovies.forEach((movie, index) => {
+        const details = [movie.quality, movie.date]
+          .filter(Boolean)
+          .join(" · ");
+        console.log(
+          `  ${index + 1}. ${movie.title}${details ? ` — ${details}` : ""}`,
+        );
+        console.log(`     🔗 ${movie.url}`);
+      });
+    });
+  } else {
+    console.log("😔 No se encontraron películas de la watchlist");
+  }
+
+  result.sources
+    .filter((source) => source.error)
+    .forEach((source) =>
+      console.log(`⚠️  ${source.source}: ${source.error}`),
+    );
+
+  console.log("=".repeat(60) + "\n");
+}
+
 async function scrapeTorrents(): Promise<ScraperResult> {
   console.log("🚀 Iniciando Torrent Scraper...");
   console.log(`📅 Fecha: ${new Date().toLocaleString("es-ES")}`);
@@ -40,79 +137,32 @@ async function scrapeTorrents(): Promise<ScraperResult> {
     headless: true,
     executablePath:
       process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined,
+    args: ["--disable-blink-features=AutomationControlled"],
   });
 
   try {
-    const page = await browser.newPage();
-    console.log(`🌐 Navegando a: ${TARGET_URL}`);
-
-    await page.goto(TARGET_URL, {
-      waitUntil: "networkidle",
-      timeout: 30000,
-    });
-
-    console.log("⏳ Esperando a que cargue el contenido...");
-    await page.waitForTimeout(2000);
-
-    // Capturar todos los enlaces de torrents
-    const torrents = await page.evaluate(() => {
-      const results: { title: string; url: string }[] = [];
-
-      // Buscar enlaces que contengan información de torrents
-      const links = Array.from(
-        document.querySelectorAll<HTMLAnchorElement>("a"),
-      );
-
-      links.forEach((link) => {
-        const title = link.textContent?.trim() || "";
-        const url = link.href || "";
-
-        // Filtrar enlaces que parecen ser torrents (tienen título y URL válida)
-        if (title.length > 5 && url.startsWith("http")) {
-          results.push({ title, url });
-        }
-      });
-
-      return results;
-    });
-
-    console.log(`📦 Total de elementos encontrados: ${torrents.length}`);
-
-    // Filtrar películas que coinciden con la watchlist
-    const foundMovies: TorrentResult[] = torrents.filter((torrent) =>
-      matchesWatchlist(torrent.title, watchlist),
+    const sources = await Promise.all(
+      SCRAPERS.map((site) => runScraper(browser, site, watchlist)),
     );
 
     const result: ScraperResult = {
-      foundMovies,
-      totalTorrents: torrents.length,
+      foundMovies: sources.flatMap((source) => source.foundMovies),
+      sources,
+      totalTorrents: sources.reduce(
+        (total, source) => total + source.totalTorrents,
+        0,
+      ),
       timestamp: new Date().toISOString(),
       watchlist,
     };
 
-    // Mostrar resultados
-    console.log("\n" + "=".repeat(60));
-    if (foundMovies.length > 0) {
-      console.log("🎉 ¡PELÍCULAS ENCONTRADAS!");
-      console.log("=".repeat(60));
-      foundMovies.forEach((movie, index) => {
-        console.log(`\n${index + 1}. ${movie.title}`);
-        console.log(`   🔗 ${movie.url}`);
-      });
-    } else {
-      console.log("😔 No se encontraron películas de la watchlist");
-    }
-    console.log("=".repeat(60) + "\n");
+    printSummary(result);
 
-    // Guardar resultados en un archivo JSON
-    const resultsPath = path.join(__dirname, "..", "results.json");
-    fs.writeFileSync(resultsPath, JSON.stringify(result, null, 2));
-    console.log(`💾 Resultados guardados en: results.json`);
+    fs.mkdirSync(RESULTS_DIR, { recursive: true });
+    fs.writeFileSync(RESULTS_PATH, JSON.stringify(result, null, 2));
+    console.log(`💾 Resultados guardados en: results/results.json`);
 
     return result;
-  } catch (error) {
-    console.error("❌ Error durante el scraping:", error);
-    throw error;
   } finally {
     await browser.close();
     console.log("🔒 Navegador cerrado");

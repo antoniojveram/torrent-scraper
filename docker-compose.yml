@@ -12,3 +12,7 @@ services:
       - ./results:/app/results
     environment:
       - TZ=Europe/Madrid
+    # DNS públicos para evitar bloqueos/filtrados del DNS local en dominios de torrents
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
