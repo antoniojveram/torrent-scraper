@@ -1,10 +1,10 @@
 # Torrent Scraper
 
-Aplicación para scrapear torrents de https://descargamix.net/ultimos y https://dontorrent.supply/ultimos, y notificar cuando aparecen películas de tu watchlist.
+Aplicación para scrapear torrents de https://dontorrent.supply/ultimos, y notificar cuando aparecen películas de tu watchlist.
 
 ## 🚀 Características
 
-- Scraping automático de las páginas de últimos estrenos (Descargamix y DonTorrent)
+- Scraping automático de la página de últimos estrenos (DonTorrent)
 - Detección de películas de tu lista de seguimiento
 - **📱 Notificaciones por Telegram** agrupadas por fuente
 - Ejecución automática diaria a las 8:00 AM mediante cron
@@ -134,7 +134,6 @@ torrent-scraper/
 ├── src/
 │   ├── index.ts        # Script principal (orquesta los scrapers)
 │   ├── scrapers/
-│   │   ├── descargamix.ts  # Scraper de descargamix.net
 │   │   └── dontorrent.ts   # Scraper de dontorrent.supply (salta Anubis)
 │   ├── telegram.ts     # Módulo de notificaciones de Telegram
 │   └── types.ts        # Definiciones de tipos TypeScript
@@ -162,10 +161,9 @@ Cuando las notificaciones están habilitadas, recibirás un mensaje cada vez que
 🎬 Torrent Scraper - Reporte
 
 📅 Fecha: 17/09/2026, 08:00:15
-📦 Total torrents analizados: 129
+📦 Total torrents analizados: 56
 
 🌐 Fuentes:
-   • Descargamix: 73 torrents
    • DonTorrent: 56 torrents
 
 🎉 ¡1 PELÍCULA(S) ENCONTRADA(S)!
@@ -193,13 +191,13 @@ Los resultados se guardan en `results/results.json` (dentro del volumen montado 
   ],
   "sources": [
     {
-      "source": "Descargamix",
-      "url": "https://descargamix.net/ultimos",
-      "totalTorrents": 73,
+      "source": "DonTorrent",
+      "url": "https://dontorrent.supply/ultimos",
+      "totalTorrents": 56,
       "foundMovies": []
     }
   ],
-  "totalTorrents": 129,
+  "totalTorrents": 56,
   "timestamp": "2026-09-17T12:00:00.000Z"
 }
 ```

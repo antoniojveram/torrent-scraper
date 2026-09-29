@@ -9,7 +9,6 @@ import {
   SourceResult,
 } from "./types";
 import { TelegramNotifier } from "./telegram";
-import { scraper as descargamix } from "./scrapers/descargamix";
 import { scraper as dontorrent } from "./scrapers/dontorrent";
 
 // Cargar variables de entorno del archivo .env
@@ -19,7 +18,7 @@ const CONFIG_PATH = path.join(__dirname, "..", "movies.json");
 const RESULTS_DIR = path.join(__dirname, "..", "results");
 const RESULTS_PATH = path.join(RESULTS_DIR, "results.json");
 
-const SCRAPERS: SiteScraper[] = [descargamix, dontorrent];
+const SCRAPERS: SiteScraper[] = [dontorrent];
 const MAX_ATTEMPTS = 3;
 const RETRY_DELAYS_MS = [5000, 15000];
 
