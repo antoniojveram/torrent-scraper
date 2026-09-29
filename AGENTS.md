@@ -1,7 +1,7 @@
 # AGENTS.md - Torrent Scraper
 
 ## Project Overview
-TypeScript scraper for `https://descargamix.net/ultimos` and `https://dontorrent.supply/ultimos` that checks for movies in a watchlist and optionally sends Telegram notifications. Runs daily at 8:00 AM via cron in Docker.
+TypeScript scraper for `https://dontorrent.supply/ultimos` that checks for movies in a watchlist and optionally sends Telegram notifications. Runs daily at 8:00 AM via cron in Docker.
 
 ## Key Commands
 
@@ -27,7 +27,6 @@ TypeScript scraper for `https://descargamix.net/ultimos` and `https://dontorrent
 
 **Modules**:
 - `src/index.ts` - Orchestrates scrapers, filters watchlist, writes results
-- `src/scrapers/descargamix.ts` - Captures all links from descargamix
 - `src/scrapers/dontorrent.ts` - Scrapes `#ultimos_torrents` (movies + series) and bypasses Anubis
 - `src/telegram.ts` - Telegram bot notifications (grouped by source)
 - `src/types.ts` - TypeScript interfaces (`SiteScraper`, `TorrentItem`, `SourceResult`, ...)
